@@ -46,10 +46,20 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v5
 
-      - uses: android-actions/setup-android@v3
-
+      # No android-actions/setup-android here on purpose. GitHub's runner images
+      # ship the Android SDK with the command line tools and licences already in
+      # place, which is what ci.yml relies on too. The action was only ever
+      # reinstalling what the image already had, and asking sdkmanager for the
+      # old 'tools' package - which Google no longer serves - failed the whole
+      # step. One fewer third-party action to break on a tag run.
+      #
+      # This step is what accepts the licences now, so it is load-bearing rather
+      # than belt and braces: assembleRelease needs the platform it compiles
+      # against, and the emulator needs a system image. `yes |` rather than a
+      # single "y" because --licenses asks about several licences in turn and
+      # would otherwise stop at the first unanswered one.
       - name: Accept SDK licences
-        run: sdkmanager --licenses <<< "y" || true
+        run: yes | sdkmanager --licenses > /dev/null || true
 
       # The check that earns this workflow its existence. Release enables R8 and
       # resource shrinking with no custom ProGuard rules, so a stripped class
@@ -80,6 +90,10 @@ jobs:
         with:
           api-level: 36
           target: google_apis
+          # The action defaults this to 32-bit x86, but Google stopped publishing
+          # 32-bit system images after API 30, so the default names a package
+          # that does not exist and the install step fails on it.
+          arch: x86_64
           profile: pixel_7_pro
           disable-animations: true
           emulator-boot-timeout: 600
