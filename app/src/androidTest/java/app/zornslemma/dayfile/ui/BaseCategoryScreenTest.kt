@@ -3,6 +3,7 @@ package app.zornslemma.dayfile.ui
 import androidx.annotation.StringRes
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -79,8 +80,24 @@ abstract class BaseCategoryScreenTest : BaseAppTest() {
     // Selecting a menu item closes the dropdown automatically, so the menu must be reopened
     // (via openItemMenu) before every further action - same pattern as the home overflow menu.
     protected fun clickMenuItem(@StringRes resId: Int) {
+        awaitOptionText(resId)
         composeTestRule.onNodeWithText(context.getString(resId)).performClick()
         composeTestRule.waitForIdle()
+    }
+
+    // Waits until an option carrying [labelRes]'s text is present - an item in the row menu, or an
+    // entry in one of the form's dropdowns.
+    //
+    // Opening either is a recomposition, and waitForIdle() can return before the popup has
+    // composed, at which point a caller's first click or assertion on it fails on a screen that
+    // was merely early. Waiting here means the popup's contents are settled before anything acts
+    // on them, and leaves the caller's own assertions checking behaviour rather than timing.
+    // onAllNodes* keeps "not there yet" a false rather than a throw.
+    protected fun awaitOptionText(@StringRes labelRes: Int) {
+        val label = context.getString(labelRes)
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(label).fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     // The helpers below that cause a database write are deliberately self-synchronising, in the
@@ -145,6 +162,7 @@ abstract class BaseCategoryScreenTest : BaseAppTest() {
     protected fun selectCapitalizationOption(@StringRes labelRes: Int) {
         composeTestRule.onNodeWithTag("category_capitalization_field").performClick()
         composeTestRule.waitForIdle()
+        awaitOptionText(labelRes)
         composeTestRule.onNodeWithText(context.getString(labelRes)).performClick()
         composeTestRule.waitForIdle()
     }

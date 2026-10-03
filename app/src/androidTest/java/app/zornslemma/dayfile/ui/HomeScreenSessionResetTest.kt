@@ -94,7 +94,11 @@ class HomeScreenSessionResetTest : BaseHomeScreenTest() {
 
     private fun openDatePicker() {
         composeTestRule.onNodeWithTag("home_date_label").performClick()
-        composeTestRule.waitForIdle()
+        // Opening the dialog is a recomposition, and waitForIdle() can return before the dialog
+        // has composed. Callers follow this with an explicit "precondition: the date picker should
+        // be open" assertion, which would then fail on a screen that was merely early - so wait
+        // for the dialog here and leave the caller asserting a settled fact.
+        composeTestRule.waitUntil(timeoutMillis = 5_000) { datePickerIsShowing() }
     }
 
     // The dialog's confirm button is built from android.R.string.ok, so resolving the same

@@ -424,23 +424,10 @@ class HomeScreenBasicsTest : BaseHomeScreenTest() {
             onHistory = { historyDates.add(it) },
         )
 
-        val menuIcon = context.getString(R.string.menu_content_description)
-
         // Each menu entry closes the dropdown, so the menu is reopened before every tap.
-        composeTestRule.onNodeWithContentDescription(menuIcon).performClick()
-        composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText(context.getString(R.string.categories_title)).performClick()
-        composeTestRule.waitForIdle()
-
-        composeTestRule.onNodeWithContentDescription(menuIcon).performClick()
-        composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText(context.getString(R.string.history)).performClick()
-        composeTestRule.waitForIdle()
-
-        composeTestRule.onNodeWithContentDescription(menuIcon).performClick()
-        composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText(context.getString(R.string.settings)).performClick()
-        composeTestRule.waitForIdle()
+        clickOverflowMenuItem(R.string.categories_title)
+        clickOverflowMenuItem(R.string.history)
+        clickOverflowMenuItem(R.string.settings)
 
         assertEquals(1, categoriesClicked)
         assertEquals(1, settingsClicked)

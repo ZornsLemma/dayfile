@@ -1,9 +1,12 @@
 package app.zornslemma.dayfile.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import app.zornslemma.dayfile.R
@@ -215,6 +218,26 @@ abstract class BaseHomeScreenTest : BaseAppTest() {
     // a thing to poll.
     protected fun waitUntilFieldEditable(catId: Long) {
         composeTestRule.waitUntil(timeoutMillis = 5_000) { isFieldEditable(catId) }
+    }
+
+    // Opens the overflow menu and taps [itemRes]. Each entry closes the dropdown, so callers
+    // repeat this once per entry rather than opening the menu and tapping several times.
+    //
+    // The wait is for the ENTRY, not the menu: opening the menu is a recomposition, and
+    // waitForIdle() can return before the dropdown has composed, at which point tapping the entry
+    // throws on a screen that was merely early. Waiting for the entry itself leaves the caller's
+    // following assertions checking behaviour rather than timing.
+    protected fun clickOverflowMenuItem(@StringRes itemRes: Int) {
+        composeTestRule
+            .onNodeWithContentDescription(context.getString(R.string.menu_content_description))
+            .performClick()
+        composeTestRule.waitForIdle()
+        val item = context.getString(itemRes)
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(item).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText(item).performClick()
+        composeTestRule.waitForIdle()
     }
 
     protected fun typeNoIdle(catId: Long, text: String) {

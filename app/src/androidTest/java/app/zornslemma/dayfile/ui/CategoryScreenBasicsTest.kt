@@ -102,6 +102,7 @@ class CategoryScreenBasicsTest : BaseCategoryScreenTest() {
         launchCategoryScreen()
 
         openItemMenu(2)
+        awaitOptionText(R.string.move_down)
         composeTestRule.onNodeWithText(context.getString(R.string.move_down)).assertIsNotEnabled()
         assertDisplayedOrder(listOf("Diet", "Money"))
         runBlocking { assertWholeCategoryTable(listOf(row(1, "Diet", 0), row(2, "Money", 1))) }
@@ -114,6 +115,7 @@ class CategoryScreenBasicsTest : BaseCategoryScreenTest() {
         launchCategoryScreen()
 
         openItemMenu(1)
+        awaitOptionText(R.string.delete)
         composeTestRule.onNodeWithText(context.getString(R.string.delete)).assertIsNotEnabled()
         // No dialog may have opened.
         composeTestRule

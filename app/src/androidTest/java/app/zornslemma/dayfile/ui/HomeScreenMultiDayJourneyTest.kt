@@ -43,6 +43,12 @@ class HomeScreenMultiDayJourneyTest : BaseHomeScreenTest() {
     private fun clearField(catId: Long, date: LocalDate) {
         composeTestRule.onNodeWithTag("entry_textfield_$catId").performTextClearance()
         composeTestRule.waitForIdle()
+        // Same reason the sweep test's clear arm needs this: clearing deletes the row, but the
+        // delete reaches Room through HomeViewModel's edit channel, and waitForIdle() covers
+        // neither that hop nor Room's executor. verifyModel() compares the WHOLE table straight
+        // afterwards, so without this the model is ahead of the database and the comparison
+        // reports a divergence that is only a write still in flight.
+        awaitEntryPersisted(catId)
         model.remove(catId to date)
     }
 
