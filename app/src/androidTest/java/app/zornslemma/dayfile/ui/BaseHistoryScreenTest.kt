@@ -4,6 +4,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.isToggleable
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -101,6 +102,11 @@ abstract class BaseHistoryScreenTest : BaseAppTest() {
         composeTestRule.setContent {
             HistoryScreen(viewModel = vmState.value, date = date, onBack = onBack)
         }
+        // Same reasoning as launchHomeScreen's awaitFirstUiState: wait for the ViewModel's first
+        // real state, not just for the main thread to go idle. HistoryViewModel.uiStateFlow is a
+        // cold flow with no initial value, so first() suspends precisely until there is something
+        // to show - which is exactly the gate an immediately-following assertion needs.
+        runBlocking { withTimeoutOrNull(5_000) { vmState.value.uiStateFlow.first() } }
         composeTestRule.waitForIdle()
     }
 
@@ -165,14 +171,33 @@ abstract class BaseHistoryScreenTest : BaseAppTest() {
     // content is e.g. ["Category", "Diet"] and can never equal just the value. toString() makes
     // the comparison indifferent to whether the property is stored as a String or an
     // AnnotatedString; both stringify to the plain displayed text.
+    //
+    // Self-synchronising, because waiting on the persisted filter does NOT mean the field has
+    // been recomposed. Those are separate hops: the ViewModel heals the filter and writes it
+    // back to DataStore, and only then does the uiState driving this field change. Whenever the
+    // renderer is slow enough that the recomposition has not been applied by the time the write
+    // lands, waiting on the write returns while the field still shows the previous value - a race,
+    // not a failure, which reads as "expected All but was Diet". So wait on the node's own
+    // semantics, the thing actually being asserted. Same reasoning as type() in
+    // BaseHomeScreenTest, which documents it at length.
     protected fun assertFilterFieldShows(value: String) {
-        val actual =
-            composeTestRule
-                .onNodeWithTag("history_filter_field")
-                .fetchSemanticsNode()
-                .config[SemanticsProperties.EditableText]
-        assertEquals(value, actual.toString())
+        composeTestRule.waitUntil(timeoutMillis = 5_000) { displayedFilterValue() == value }
+        assertEquals(value, displayedFilterValue())
     }
+
+    // The value the filter field is actually displaying right now, read from the node's own
+    // semantics rather than from the model, and null while the field is not in the merged tree
+    // yet. Uses onAllNodes* so that "not there yet" yields null instead of throwing, which would
+    // abort the waitUntil above on its first poll rather than retrying - see type() in
+    // BaseHomeScreenTest for the full explanation of why that distinction matters.
+    private fun displayedFilterValue(): String? =
+        composeTestRule
+            .onAllNodesWithTag("history_filter_field")
+            .fetchSemanticsNodes()
+            .firstOrNull()
+            ?.config
+            ?.get(SemanticsProperties.EditableText)
+            ?.toString()
 
     // Exactly one toggleable node exists on the history screen (the include-deleted switch),
     // so the semantic-role matcher is unambiguous without a test tag.

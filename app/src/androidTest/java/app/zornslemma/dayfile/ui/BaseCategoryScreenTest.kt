@@ -2,6 +2,7 @@ package app.zornslemma.dayfile.ui
 
 import androidx.annotation.StringRes
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -153,14 +154,28 @@ abstract class BaseCategoryScreenTest : BaseAppTest() {
     // name") into the node's Text semantics alongside the displayed value, so the node's
     // combined text content can never equal just the value (same technique as
     // BaseHistoryScreenTest.assertFilterFieldShows).
+    //
+    // Self-synchronising for the same reason as that one: the name field is driven by a uiState
+    // that reaches the screen a hop after whatever wrote it (a Room save, a DataStore read, a
+    // sibling field's edit), so reading the node's semantics the instant the writer returns can
+    // observe the previous value. Wait on the node - the thing being asserted - rather than on
+    // whatever produced the write.
     protected fun assertNameFieldShows(value: String) {
-        val actual =
-            composeTestRule
-                .onNodeWithTag("category_name_field")
-                .fetchSemanticsNode()
-                .config[SemanticsProperties.EditableText]
-        assertEquals(value, actual.toString())
+        composeTestRule.waitUntil(timeoutMillis = 5_000) { displayedNameValue() == value }
+        assertEquals(value, displayedNameValue())
     }
+
+    // The name field's displayed value, or null while it is not in the merged tree yet.
+    // onAllNodes* keeps that a null rather than a throw, so the waitUntil above actually retries;
+    // see type() in BaseHomeScreenTest.
+    private fun displayedNameValue(): String? =
+        composeTestRule
+            .onAllNodesWithTag("category_name_field")
+            .fetchSemanticsNodes()
+            .firstOrNull()
+            ?.config
+            ?.get(SemanticsProperties.EditableText)
+            ?.toString()
 
     // Saves travel via viewModelScope onto Room's own executors, so they can land slightly
     // after waitForIdle() quiesces the main thread. These poll on a specific observable fact

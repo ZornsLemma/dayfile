@@ -1,6 +1,7 @@
 package app.zornslemma.dayfile.ui
 
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -64,7 +65,29 @@ abstract class BaseHomeScreenTest : BaseAppTest() {
                 onHistory = onHistory,
             )
         }
+        awaitFirstUiState(homeVm)
         composeTestRule.waitForIdle()
+    }
+
+    // Waits for the ViewModel's FIRST real state before any caller is allowed to assert.
+    //
+    // uiStateFlow starts life as null - HomeViewModel.kt ends the chain with
+    // stateIn(viewModelScope, SharingStarted.Eagerly, null) - and only becomes non-null once the
+    // date / categories / entries combine has actually produced something. That makes "non-null"
+    // an unambiguous gate: until it passes, the screen has no content and there is nothing to find.
+    //
+    // waitForIdle() on its own does not wait for this. It quiesces the main thread, but the
+    // emission arrives from Room and DataStore on their own dispatchers, so the first composition
+    // can still be showing an empty screen when it returns. A caller that asserts immediately
+    // after launch - `onNodeWithText("Diet").assertExists()`, say - then fails on a screen that was
+    // merely early, not wrong. This is the same class of problem type() documents: a fact about
+    // the model is not yet a fact about the screen.
+    //
+    // Phrased as a waitUntil over the flow's value rather than a blocking first() so it matches
+    // waitForProtectionState below, and so the clock is pumped between polls - giving the
+    // recomposition a chance to land as well as the emission.
+    private fun awaitFirstUiState(vm: HomeViewModel) {
+        composeTestRule.waitUntil(timeoutMillis = 5_000) { vm.uiStateFlow.value != null }
     }
 
     // Waits for the ViewModel to report a given protection state.
@@ -106,15 +129,32 @@ abstract class BaseHomeScreenTest : BaseAppTest() {
         // the DataStore/Room continuation whose propagated state this predicate is waiting for
         // from running at all. The direct query lets waitUntil perform the repeated, non-blocking
         // check until the read-only flag is actually removed from the rendered field.
-        composeTestRule.waitUntil(timeoutMillis = 5_000) {
-            composeTestRule
-                .onNodeWithTag("entry_textfield_$catId")
-                .fetchSemanticsNode()
-                .config[SemanticsProperties.IsEditable] == true
-        }
+        //
+        // The read must also be unable to throw, and that is why it goes through onAllNodes*
+        // rather than onNodeWithTag: Compose builds the MERGED semantics tree during
+        // measure/layout, a frame or more after the node is composed, so for a moment after
+        // launchHomeScreen the field is present in the unmerged tree and absent from the merged
+        // one. fetchSemanticsNode() treats that as an error, and waitUntil does NOT catch
+        // exceptions from its condition - so an unguarded read aborts the retry loop on the first
+        // miss and the test fails having never waited out even a frame. That surfaces as
+        // "could not find any node that satisfies (TestTag = ...) ... however, the unmerged tree
+        // contains 1 node that matches": a race, not a failure. onAllNodes* yields an empty list
+        // instead of throwing, which is the same idiom HomeScreenPinningTest already relies on to
+        // wait for a node to disappear.
+        composeTestRule.waitUntil(timeoutMillis = 5_000) { isFieldEditable(catId) }
         composeTestRule.onNodeWithTag("entry_textfield_$catId").performTextInput(text)
         composeTestRule.waitForIdle()
     }
+
+    // Whether the field for [catId] is currently rendered as editable. Null-tolerant on purpose:
+    // "not in the tree yet" and "present but read-only" are both simply "not ready yet".
+    private fun isFieldEditable(catId: Long): Boolean =
+        composeTestRule
+            .onAllNodesWithTag("entry_textfield_$catId")
+            .fetchSemanticsNodes()
+            .firstOrNull()
+            ?.config
+            ?.get(SemanticsProperties.IsEditable) == true
 
     protected fun typeNoIdle(catId: Long, text: String) {
         composeTestRule.onNodeWithTag("entry_textfield_$catId").performTextInput(text)
