@@ -6,6 +6,8 @@ Some sort of search feature?
 
 CategoryDao.observeAllEnabledCategories() is dead - implemented by three test fakes, called from main nowhere. Left alone to keep this release diff small. ui/theme/Type.kt's bodyLarge override is also currently identical to the Material 3 default and therefore does nothing; commented to say so rather than deleted, since I'd rather not assert an equivalence I can't compile-check.
 
+Would it be possible to set up a github action so that when a release is uploaded, a build is done in the same way F-Droid would and the uploaded binary is checked against the github-built one? github cannot sign the binary it builds - only I have the signing key - but just as F-Droid does it could check the binary is otherwise identical. This might be a bit tricky, as as soon as the release is tagged F-Droid/Obtainium might pick it up, so the tag is kind of burned and if the reproduction fails it is "too late". Albeit I still at least discover it earlier than waiting for F-Droid's build.
+
 
 === Unpinned behaviour that a reader of the tests alone would not know exists (September 2026)
 
