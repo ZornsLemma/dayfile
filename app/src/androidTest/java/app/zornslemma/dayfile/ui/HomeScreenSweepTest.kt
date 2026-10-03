@@ -165,6 +165,12 @@ class HomeScreenSweepTest : BaseHomeScreenTest() {
                 }
             }
 
+            // type() waits for its own write, but the replace and clear arms drive the field
+            // directly and so have no such wait. Settle the database before comparing, or the
+            // model check below races the channel hop in HomeViewModel and reports a divergence
+            // that is only a write still in flight.
+            awaitEntryPersisted(catId)
+
             verify(detail)
         }
 

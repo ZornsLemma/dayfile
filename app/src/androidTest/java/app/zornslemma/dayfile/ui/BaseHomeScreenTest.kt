@@ -144,6 +144,44 @@ abstract class BaseHomeScreenTest : BaseAppTest() {
         composeTestRule.waitUntil(timeoutMillis = 5_000) { isFieldEditable(catId) }
         composeTestRule.onNodeWithTag("entry_textfield_$catId").performTextInput(text)
         composeTestRule.waitForIdle()
+        // ...and then for the write to reach Room. Without this, a caller that reads the database
+        // straight afterwards can see the pre-edit value while the field already shows the new
+        // one, because the edit is still travelling down HomeViewModel's channel. See
+        // awaitEntryPersisted.
+        awaitEntryPersisted(catId)
+    }
+
+    // Not in the tree yet and present-but-empty are both simply "nothing stored yet".
+    private fun displayedFieldText(catId: Long): String =
+        composeTestRule
+            .onAllNodesWithTag("entry_textfield_$catId")
+            .fetchSemanticsNodes()
+            .firstOrNull()
+            ?.config
+            ?.get(SemanticsProperties.EditableText)
+            ?.toString() ?: ""
+
+    // Waits until Room holds what the field is displaying for [catId] on the selected date.
+    //
+    // Necessary because an edit does not go straight to the database. onUserTyped pushes it onto a
+    // Channel which a single collector coroutine drains onto Room (see HomeViewModel), so between
+    // performTextInput returning and the write landing there is a window in which the field has
+    // the new text and the database still has the old one. waitForIdle() does not close it - it
+    // quiesces the main thread, and none of the channel hop or Room's executor is on it. Asserting
+    // straight after a type() therefore observes a race, not a result.
+    //
+    // Compares the database against the FIELD rather than against an expected value, which is what
+    // lets one helper serve append, replacement and clear alike. A blank field is compared as "",
+    // matching the fact that clearing deletes the row rather than storing an empty string.
+    protected fun awaitEntryPersisted(catId: Long) {
+        val date = currentDate()
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            val shown = displayedFieldText(catId)
+            runBlocking {
+                date != null &&
+                    entryDao.getEntryForCategoryAndDate(catId, date)?.text.orEmpty() == shown
+            }
+        }
     }
 
     // Whether the field for [catId] is currently rendered as editable. Null-tolerant on purpose:
