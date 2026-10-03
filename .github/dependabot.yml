@@ -1,0 +1,28 @@
+# Given how fast this project moves on versions - AGP 9.x, Kotlin 2.4.x,
+# compileSdk tracking a preview platform - the useful signal here is "the build
+# broke when a dependency moved", not "there is a patch release". These PRs are
+# therefore expected to need attention rather than a reflex merge.
+version: 2
+
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # AndroidX, Compose and Room are released together and generally need to
+      # move together. Batching them keeps you off the intermediate states where
+      # Compose has moved on but the BOM or Room has not.
+      androidx:
+        patterns:
+          - androidx.*
+          - com.google.android.material*
+      kotlin:
+        patterns:
+          - org.jetbrains.kotlin*
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

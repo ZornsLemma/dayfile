@@ -1,0 +1,11 @@
+# Normalize line endings to LF for all text files to ensure reproducible builds
+# across Windows and Linux development environments.
+* text=auto eol=lf
+
+# Explicitly ensure raw resource text files (license texts) are treated as text
+# with LF endings, preventing git or the OS from mangling them.
+app/src/main/res/raw/* text eol=lf
+
+# Windows batch files must retain CRLF line endings to be executed correctly by
+# cmd.exe. Override the global LF rule for this specific case.
+*.bat text eol=crlf

@@ -1,0 +1,98 @@
+# Everything, on tags only.
+#
+# A tag is the point at which code becomes a release, so this is where the
+# expensive and fragile checks belong: the release build under R8, and the
+# instrumented tests on an emulator. Keeping them off ordinary pushes is what
+# makes them tolerable to maintain - they get their attention when the answer
+# matters, and not on a day when you only wanted to know the code still compiles.
+#
+# This workflow does NOT build anything you would ship. (It does upload test reports as an
+# Actions artefact when something fails - that is not a release artefact.) Shippable builds are
+# signed by hand in Android Studio and cannot be produced here at all, because a keystore
+# password cannot be typed into CI. See the release build type in app/build.gradle.kts.
+#
+# So this only answers two questions: "would the release build survive minification, and do the
+# tests still pass when the app is actually running?".
+name: Release check
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release-check:
+    name: Release build and instrumented tests
+    runs-on: ubuntu-latest
+    # A full run is maybe 20-30 minutes cold. Kept sequential rather than split
+    # into parallel jobs: this runs rarely enough that the wall-clock saving is
+    # not worth the extra machinery, and one job is one place to look when
+    # something goes wrong.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Accept SDK licences
+        run: sdkmanager --licenses <<< "y" || true
+
+      # The check that earns this workflow its existence. Release enables R8 and
+      # resource shrinking with no custom ProGuard rules, so a stripped class
+      # gives you an APK that builds clean and passes the JVM tests and the
+      # instrumented tests - those run against debug, and debug is not minified -
+      # and then misbehaves in the one build you actually ship. Nothing cheaper
+      # catches this.
+      #
+      # What it does and does not catch, precisely: `assembleRelease` proves the release
+      # variant still compiles under R8 with no keep rules, which is the check that
+      # breaks on toolchain upgrades. It does NOT prove that the minified build behaves
+      # correctly — the instrumented tests below run against the debug variant, which is
+      # not minified. A resource the shrinker removed, or a class stripped and reached only
+      # reflectively, would pass this workflow and fail in an APK somebody publishes.
+      # app/src/main/keepRules/rules.keep records the audit that currently makes that
+      # acceptable.
+      - name: Assemble release
+        run: ./gradlew assembleRelease
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          profile: pixel_7_pro
+          disable-animations: true
+          emulator-boot-timeout: 600
+          script: ./gradlew connectedDebugAndroidTest
+
+      # Only if something actually failed, and only when the run failed rather
+      # than merely having failures in it.
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumented-test-reports
+          path: |
+            app/build/reports/androidTests/**
+            app/build/outputs/androidTest-results/**
+          retention-days: 14

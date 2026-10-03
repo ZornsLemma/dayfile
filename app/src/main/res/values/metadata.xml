@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="user_manual_url" translatable="false">https://zornslemma.github.io/dayfile-docs</string>
+    <string name="github_url" translatable="false">https://github.com/ZornsLemma/dayfile</string>
+    <string name="copyright" translatable="false">Copyright © 2026 Steven Flintham</string>
+</resources>

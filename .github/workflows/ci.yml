@@ -1,0 +1,120 @@
+# Lightweight checks on every push.
+#
+# A push here is not a save point - work in progress lives in a local repository -
+# so these exist only to tell you what state the code you pushed is in. Nothing
+# here blocks a push, modifies a commit, or requires a pull request.
+#
+# Three separate jobs rather than one `./gradlew check`, deliberately:
+#   - `check` aggregates spotlessCheck with the tests, which mixes formatting
+#     failures up with test failures and entangles formatting with test-running
+#   - separate jobs mean the status icons tell you which kind of problem you have
+#     without opening a log, and one red job cannot stop the others running
+#
+# Expected states:
+#   unit-tests  red means a real regression. Act on it.
+#   format      red means you have not run spotlessApply recently. Informational.
+#   lint        never goes red. Advisory only, see below.
+#
+# If this does not work first time, which is entirely possible for anything you
+# cannot run locally, deleting this file costs you nothing: none of it is
+# required for the project to build, test or release.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  # Monthly, so toolchain and platform drift get noticed even in a month where
+  # nothing was pushed. This is a backstop for bit-rot, not a test of the code.
+  schedule:
+    - cron: '23 5 1 * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read-only is all these need, so a compromised dependency or a bad action cannot
+# push to your repository.
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      # GitHub's runner images ship the Android SDK with licences already
+      # accepted, so this is belt and braces. `yes |` rather than a single "y"
+      # because --licenses asks about several licences in turn and would
+      # otherwise sit waiting for input until the job times out.
+      - name: Accept SDK licences
+        run: yes | sdkmanager --licenses > /dev/null || true
+
+      # `test` would also run the release unit tests, which are the same tests
+      # again for no extra signal. `check` is avoided for the reason at the top.
+      - name: JVM unit tests
+        run: ./gradlew testDebugUnitTest
+
+  format:
+    name: Formatting
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Accept SDK licences
+        run: yes | sdkmanager --licenses > /dev/null || true
+
+      # Reports whether the tree matches ktfmt. Does not change anything. Fix
+      # locally with spotlessApply and push again.
+      - name: Spotless check
+        run: ./gradlew spotlessCheck
+
+  lint:
+    name: Lint (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # Never fails this workflow, whatever lint finds. Android Lint reports
+    # hundreds of checks and, on Compose code in particular, a good number of
+    # them are either wrong or not worth acting on. There is no value in a
+    # permanent red for findings you have decided not to act on, so this is
+    # information rather than a gate - read it when convenient, ignore it
+    # otherwise.
+    #
+    # Deleting this job is the honest alternative if it stops being even
+    # marginally interesting.
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Accept SDK licences
+        run: yes | sdkmanager --licenses > /dev/null || true
+
+      - name: Android lint
+        run: ./gradlew lintDebug

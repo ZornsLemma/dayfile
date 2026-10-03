@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        The window background painted before Compose draws its first frame. Two variants, in this
+        file and in values-night/colors.xml, because a single light value produces a white flash
+        every time the app opens in dark mode.
+
+        These are Material 3's default light and dark surface colours, which is what
+        AppTheme's LightColorScheme/DarkColorScheme use on Android 11, where dynamic colour is not
+        available. Matching them means there is no visible transition at all on those devices. On
+        Android 12+ the real surface is derived from the user's wallpaper and cannot be known here,
+        so the flash is a brief neutral grey rather than a match - much less objectionable than
+        white, and gone within one frame.
+    -->
+    <color name="window_background">#FFFBFE</color>
+</resources>

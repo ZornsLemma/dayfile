@@ -1,0 +1,41 @@
+# Editor settings. Mostly advisory - see the notes below.
+#
+# Note that Kotlin formatting is owned by Spotless (ktfmt, kotlinlangStyle,
+# 4-space indent) configured in app/build.gradle.kts. Running
+# `./gradlew spotlessApply` is authoritative for .kt files; the settings here
+# just stop an editor and the formatter disagreeing in the meantime.
+#
+# Android Studio does read this file for code. It does not use it to drive
+# Markdown rendering, so the [.md] section below is for other editors, git and
+# diff tools rather than for the IDE.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{kt,kts}]
+indent_size = 4
+
+[*.{yml,yaml,json}]
+indent_size = 2
+
+[*.{xml}]
+indent_size = 4
+
+[*.md]
+indent_size = 2
+# Not enforced by most tools, but the docs are hand-wrapped at roughly this
+# width and it keeps that consistent as they are edited.
+max_line_length = 100
+# Disabled deliberately: two trailing spaces are a hard line break in Markdown.
+# The docs use fenced code blocks instead, but this should not be auto-stripped
+# out from under anyone who relies on it.
+trim_trailing_whitespace = false
+
+[*.{sh,bash}]
+indent_size = 2

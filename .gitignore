@@ -1,0 +1,44 @@
+# Initial content suggested by ChatGPT but very similar to the default created
+# by Android Studio
+
+# IntelliJ / Android Studio
+*.iml
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+.idea/deploymentTargetSelector.xml
+.idea/androidTestResultsUserPreferences.xml
+.idea/misc.xml
+.idea/markdown.xml
+
+# Gradle
+.gradle/
+
+# Local machine configuration
+local.properties
+tui.json
+.kotlin/
+
+# Build output
+build/
+**/build/
+
+# Native build
+.externalNativeBuild/
+.cxx/
+
+# Android Studio captures
+captures/
+
+# macOS
+.DS_Store
+
+# Files containing private data (e.g. keys)
+aider.sh
+.aider*
+aider-diff.sh
+opencode*
+.opencode*

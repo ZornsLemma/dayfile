@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+        The pre-Compose window background, set explicitly so it is not inherited from the platform
+        theme, and paired with values-night/themes.xml so it follows the system dark mode setting.
+
+        Compose repaints over this immediately, so it only needs to be a plausible approximation of
+        the app's background rather than an exact match - see values/colors.xml, which explains the
+        colour choice and why it is not visible at all on Android 11.
+    -->
+    <style name="Theme.App" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+</resources>

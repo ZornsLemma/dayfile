@@ -1,0 +1,28 @@
+# Add project specific R8 rules here.
+# AGP will combine all keep rule files in src/main/keepRules to pass to R8
+#
+# For more details, see
+#   https://d.android.com/r/tools/r8/keep-rules
+#
+# This file has no active rules, which is a decision rather than an oversight. R8 is enabled for
+# release builds (isMinifyEnabled, isShrinkResources) with no custom rules, so anything that
+# genuinely needs keeping should be written here *before* it breaks a release, not after.
+#
+# Why nothing needs one as of the first public release:
+#   - No Class.forName, getDeclaredMethod/getDeclaredField or newInstance in app code.
+#   - The only ::class.java uses are ViewModelProvider.Factory `isAssignableFrom` checks and
+#     Room.databaseBuilder(..., XDatabase::class.java, ...), all direct constant references.
+#   - No serialization library (kotlinx.serialization, Gson, Jackson) and no @Parcelize.
+#   - Room's generated _Impl classes are covered by room-runtime's own consumer rules
+#     (`-keep class * extends androidx.room.RoomDatabase`); its type converters are constructed
+#     directly rather than reflectively.
+#   - reorderable ships an empty proguard.txt and does no reflection.
+#
+# Re-check this list when adding a dependency, not only when adding your own code.
+
+# If your project uses WebView with JS, uncomment the following
+# and specify the fully qualified class name to the JavaScript interface
+# class:
+#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
+#   public *;
+#}
