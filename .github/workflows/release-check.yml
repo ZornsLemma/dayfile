@@ -103,7 +103,20 @@ jobs:
           # 32-bit system images after API 30, so the default names a package
           # that does not exist and the install step fails on it.
           arch: x86_64
-          profile: pixel_7_pro
+          # pixel_2, not pixel_7_pro, on purpose. There is no GPU on a CI runner, so every
+          # frame is rendered by SwiftShader on the CPU, and that cost scales with pixel count:
+          # 1440x3120 (pixel_7_pro) is 4.5 megapixels against this profile's 2.1, so roughly 2.2x
+          # the rendering work per frame. On a contended runner that was enough to leave the
+          # instrumented tests flaky - screens recomposing late enough that assertions ran
+          # against a stale merged semantics tree.
+          #
+          # Layout is not compromised: both profiles are 411dp wide, so horizontal layout, text
+          # wrapping and line breaking are identical. Only the height differs (891dp vs 731dp), so
+          # a tall list shows fewer rows before the fold.
+          #
+          # TODO.md records what to do if this ever needs revisiting. Switch back to
+          # `pixel_7_pro` if a larger viewport is ever wanted deliberately.
+          profile: pixel_2
           disable-animations: true
           emulator-boot-timeout: 600
 
