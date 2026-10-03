@@ -46,7 +46,7 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v5
 
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
 
       - name: Accept SDK licences
         run: sdkmanager --licenses <<< "y" || true
