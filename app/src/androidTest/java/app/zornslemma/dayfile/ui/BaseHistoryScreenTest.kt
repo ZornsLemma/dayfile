@@ -107,6 +107,12 @@ abstract class BaseHistoryScreenTest : BaseAppTest() {
         // cold flow with no initial value, so first() suspends precisely until there is something
         // to show - which is exactly the gate an immediately-following assertion needs.
         runBlocking { withTimeoutOrNull(5_000) { vmState.value.uiStateFlow.first() } }
+        // Then wait for the screen to have DRAWN that state, not just modelled it - see
+        // BaseAppTest.awaitRenderedNode. The filter field renders unconditionally at the top of the
+        // content column, in the same composition as the entry list, so once it is merged the list
+        // is too. Without this, `onNodeWithText("...").assertExists()` straight after launch races
+        // the first merge.
+        awaitRenderedNode("history_filter_field")
         composeTestRule.waitForIdle()
     }
 
@@ -132,6 +138,7 @@ abstract class BaseHistoryScreenTest : BaseAppTest() {
         // the recomposition its chance to land. Bounded so a genuine upstream failure surfaces as
         // the caller's own assertion failure rather than a hang.
         runBlocking { withTimeoutOrNull(5_000) { vmState.value.uiStateFlow.first() } }
+        awaitRenderedNode("history_filter_field")
         composeTestRule.waitForIdle()
     }
 

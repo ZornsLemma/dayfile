@@ -75,6 +75,16 @@ abstract class BaseHomeScreenTest : BaseAppTest() {
             )
         }
         awaitFirstUiState(homeVm)
+        // Then wait for the screen to have DRAWN that state. awaitFirstUiState says the ViewModel
+        // has data; this says the merged semantics tree reflects the composition that uses it,
+        // which
+        // is the tree every assertion here searches. Without it, an assertion on a node that
+        // arrived
+        // with that first state - an entry field, the date label - can run against a merged tree
+        // from before it. `home_date_label` renders unconditionally inside the Scaffold, in the
+        // same
+        // composition as the entry list, so seeing it merged means the list is merged too.
+        awaitRenderedNode("home_date_label")
         composeTestRule.waitForIdle()
     }
 

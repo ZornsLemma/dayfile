@@ -1,6 +1,7 @@
 package app.zornslemma.dayfile.ui
 
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.Room
@@ -145,6 +146,31 @@ abstract class BaseAppTest {
             composeTestRule.waitUntil(timeoutMillis = 5_000) { read() != before }
         }
         composeTestRule.waitForIdle()
+    }
+
+    /**
+     * Waits until a node carrying [tag] is present in the MERGED semantics tree.
+     *
+     * Compose keeps two trees. The unmerged one gains a node as soon as it is composed; the merged
+     * one - which is what `onNodeWith*` searches by default, and therefore what every assertion in
+     * these suites sees - is rebuilt during measure and layout, a frame or more later. When the
+     * renderer is slow, an assertion can therefore run against a merged tree that predates the
+     * current composition, and fails with the characteristic "however, the unmerged tree contains 1
+     * node that matches".
+     *
+     * Waiting on a node that belongs to the CURRENT composition closes that gap without needing to
+     * know what the test is about: once a node from this composition is visible in the merged tree,
+     * the merged tree reflects this composition. So callers pass a tag on chrome that always
+     * renders - the home screen's date label, the history screen's filter field - which is present
+     * in the same composition as whatever content the test then goes on to assert about.
+     *
+     * This is a different wait from the launchers' "has the ViewModel emitted" gate, and neither
+     * substitutes for the other: one says the model has data, this says the screen has drawn it.
+     */
+    protected fun awaitRenderedNode(tag: String) {
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     protected fun seedCategory(id: Long, name: String, ordering: Int, enabled: Boolean = true) {
