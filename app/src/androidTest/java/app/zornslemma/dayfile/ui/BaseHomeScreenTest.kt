@@ -156,6 +156,20 @@ abstract class BaseHomeScreenTest : BaseAppTest() {
             ?.config
             ?.get(SemanticsProperties.IsEditable) == true
 
+    // Waits until the field for [catId] is rendered read-only - the counterpart to the wait
+    // inside type(), for tests whose precondition is that typing must be refused.
+    //
+    // Its real purpose, though, is to make a LATER wait for an editable field meaningful. A test
+    // that flips a setting and then waits only for "the field became editable" has not really
+    // waited for anything if the field was editable to begin with: the wait matches the state the
+    // screen started in and returns at once. Observing the read-only state first means the later
+    // wait can only be satisfied by an actual transition. See
+    // dayStartChangePromotesSelectedHistoricalDateToUnprotectedToday, which needs this because
+    // its starting state is already the unprotected one.
+    protected fun waitUntilFieldReadOnly(catId: Long) {
+        composeTestRule.waitUntil(timeoutMillis = 5_000) { !isFieldEditable(catId) }
+    }
+
     protected fun typeNoIdle(catId: Long, text: String) {
         composeTestRule.onNodeWithTag("entry_textfield_$catId").performTextInput(text)
     }

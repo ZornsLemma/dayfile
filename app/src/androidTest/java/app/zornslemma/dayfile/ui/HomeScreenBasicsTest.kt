@@ -308,6 +308,17 @@ class HomeScreenBasicsTest : BaseHomeScreenTest() {
         runBlocking { appStateRepository.setSelectedDate(LocalDate.parse("2026-08-26")) }
         launchHomeScreen(viewModel)
 
+        // Pin the state this test promotes FROM, before changing anything.
+        //
+        // buildHomeViewModel seeds selectedDate to this clock's logical date under the default
+        // 4:00 day-start - 2026-08-27 - which is also the current logical day, so the field starts
+        // out EDITABLE. Only then does the browse-back above make the 26th the selection. That
+        // matters because a bare wait for isProtected == false after the day-start change would
+        // match that starting value and return immediately, having observed no promotion at all;
+        // the failure would then surface as an opaque timeout inside type(). Seeing the field go
+        // read-only first means the later wait can only be satisfied by a real transition.
+        waitUntilFieldReadOnly(1L)
+
         // Mirror image of demotion: with day-start 23:00 the 26th IS the current logical day,
         // so the field must become editable automatically.
         runBlocking { settingsRepository.setDayStartTime(LocalTime.of(23, 0)) }
