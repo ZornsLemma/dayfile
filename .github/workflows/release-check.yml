@@ -1,10 +1,23 @@
-# Everything, on tags only.
+# Everything, only for an "rc*" tag.
 #
-# A tag is the point at which code becomes a release, so this is where the
-# expensive and fragile checks belong: the release build under R8, and the
-# instrumented tests on an emulator. Keeping them off ordinary pushes is what
-# makes them tolerable to maintain - they get their attention when the answer
-# matters, and not on a day when you only wanted to know the code still compiles.
+# A release candidate is the point at which code becomes a release, so this is where the
+# expensive and fragile checks belong: the release build under R8, and the instrumented
+# tests on an emulator. Keeping them off ordinary pushes is what makes them tolerable to
+# maintain - they get their attention when the answer matters, and not on a day when you
+# only wanted to know the code still compiles.
+#
+# An "rc" TAG rather than a "v" tag, deliberately. F-Droid and Obtainium both watch this
+# repository for release signals, and tags are what a "v"-prefixed name means to them. Naming
+# this workflow's trigger "rc" keeps the act of asking "is this probably shippable?" entirely
+# separate from the act of announcing a release: an rc tag is not a release, and nothing
+# outside this repository treats it as one.
+#
+# The convention that makes that safe is: never move or delete an rc tag. If a candidate fails,
+# fix the problem and tag again as the next number (rc2.0-1, then rc2.0-2). Moving a tag
+# rewrites published history and would be the thing that actually upset an external observer;
+# adding one more tag is harmless and leaves a record of what was tried.
+#
+# workflow_dispatch is the other way in, for checking a candidate without spending a tag on it.
 #
 # This workflow does NOT build anything you would ship. (It does upload test reports as an
 # Actions artefact when something fails - that is not a release artefact.) Shippable builds are
@@ -18,10 +31,14 @@ name: Release check
 on:
   push:
     tags:
-      - 'v*'
+      - 'rc*'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
+  # Each rc tag is its own ref, so two candidates never share a group and never cancel each
+  # other - which is the behaviour we want, since they are separate attempts rather than
+  # successive states of one thing.
   cancel-in-progress: false
 
 permissions:
@@ -31,10 +48,9 @@ jobs:
   release-check:
     name: Release build and instrumented tests
     runs-on: ubuntu-latest
-    # A full run is maybe 20-30 minutes cold. Kept sequential rather than split
-    # into parallel jobs: this runs rarely enough that the wall-clock saving is
-    # not worth the extra machinery, and one job is one place to look when
-    # something goes wrong.
+    # A full run is ~10 minutes. Kept sequential rather than split into parallel
+    # jobs: the wall-clock saving is not worth the extra machinery, and one job is
+    # one place to look when something goes wrong.
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
