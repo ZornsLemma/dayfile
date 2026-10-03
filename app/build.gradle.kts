@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.google.ksp)
     alias(libs.plugins.kotlin.compose)
-    id("com.diffplug.spotless") version "8.1.0"
+    id("com.diffplug.spotless") version "8.10.3"
     alias(libs.plugins.androidx.room)
 }
 
