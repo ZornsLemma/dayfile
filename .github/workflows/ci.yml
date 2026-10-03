@@ -58,7 +58,7 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - uses: gradle/actions/setup-gradle@v5
+      - uses: gradle/actions/setup-gradle@v6
 
       # `test` would also run the release unit tests, which are the same tests
       # again for no extra signal. `check` is avoided for the reason at the top.
@@ -77,7 +77,7 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - uses: gradle/actions/setup-gradle@v5
+      - uses: gradle/actions/setup-gradle@v6
 
       # Reports whether the tree matches ktfmt. Does not change anything. Fix
       # locally with spotlessApply and push again.
@@ -108,7 +108,7 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - uses: gradle/actions/setup-gradle@v5
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Android lint
         run: ./gradlew lintDebug
