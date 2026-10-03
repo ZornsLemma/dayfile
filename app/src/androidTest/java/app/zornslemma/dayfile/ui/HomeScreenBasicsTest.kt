@@ -482,7 +482,14 @@ class HomeScreenBasicsTest : BaseHomeScreenTest() {
         // the 15th while on the 1st, then the 1st while on the 15th, avoids that by design.
         composeTestRule.onNodeWithText(today.withDayOfMonth(15).format(fullFormat)).performClick()
         composeTestRule.onNodeWithText(context.getString(android.R.string.ok)).performClick()
-        composeTestRule.waitForIdle()
+
+        // Confirming the picker changes the selected date out-of-band: dialog -> onDateSelected ->
+        // viewModelScope -> DataStore -> dateStateFlow combine -> stateIn -> recomposition. None of
+        // that is tracked by the test idling machinery, so waitForIdle() can return with the
+        // screen still on the old day. Wait for the RENDERED consequence - the 15th is historical,
+        // so its field must be read-only - rather than asserting the icon straight away. See
+        // goNext() for why the date change needs waiting for at all.
+        waitUntilFieldReadOnly(1L)
 
         val picked = today.withDayOfMonth(15)
         composeTestRule.onNodeWithContentDescription(protectedDesc).assertExists()
@@ -496,7 +503,13 @@ class HomeScreenBasicsTest : BaseHomeScreenTest() {
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText(today.format(fullFormat)).performClick()
         composeTestRule.onNodeWithText(context.getString(android.R.string.ok)).performClick()
-        composeTestRule.waitForIdle()
+        // Same out-of-band date change as above, in reverse: today is the current logical day, so
+        // its field must become editable again. Waiting on that before the assertDoesNotExist is
+        // what stops the negative assertion from passing for the wrong reason - a screen that has
+        // not finished propagating would still be showing the 15th's protection state, which fails
+        // the assertion, but one that is merely slow in the other direction would go green
+        // vacuously.
+        waitUntilFieldEditable(1L)
 
         composeTestRule.onNodeWithContentDescription(protectedDesc).assertDoesNotExist()
         composeTestRule.onNodeWithTag("entry_textfield_1").assertTextEquals("salad")

@@ -208,6 +208,15 @@ abstract class BaseHomeScreenTest : BaseAppTest() {
         composeTestRule.waitUntil(timeoutMillis = 5_000) { !isFieldEditable(catId) }
     }
 
+    // The counterpart, for waiting on a day becoming current and its field opening up for edits.
+    // Read-only-ness is used in preference to the protection icon because it is derived from the
+    // same uiState in the same recomposition, so a field that has become read-only implies the
+    // icon is present - but the icon itself sits inside a merging parent and is not as dependable
+    // a thing to poll.
+    protected fun waitUntilFieldEditable(catId: Long) {
+        composeTestRule.waitUntil(timeoutMillis = 5_000) { isFieldEditable(catId) }
+    }
+
     protected fun typeNoIdle(catId: Long, text: String) {
         composeTestRule.onNodeWithTag("entry_textfield_$catId").performTextInput(text)
     }
