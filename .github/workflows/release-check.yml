@@ -44,7 +44,7 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - uses: gradle/actions/setup-gradle@v5
+      - uses: gradle/actions/setup-gradle@v6
 
       # No android-actions/setup-android, and no licence-accepting step either. The
       # runner images ship the Android SDK with the licences already accepted, and
