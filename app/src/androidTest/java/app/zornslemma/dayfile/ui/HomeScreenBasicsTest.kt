@@ -303,20 +303,26 @@ class HomeScreenBasicsTest : BaseHomeScreenTest() {
         seedCategory(id = 1, name = "Diet", ordering = 0)
 
         val lateAugustNoon = LocalDateTime.of(2026, 8, 27, 12, 0)
+        val yesterday = LocalDate.parse("2026-08-26")
         val viewModel = buildHomeViewModel { lateAugustNoon }
-        // Override the durable seed: browse back to yesterday, as the user would.
-        runBlocking { appStateRepository.setSelectedDate(LocalDate.parse("2026-08-26")) }
         launchHomeScreen(viewModel)
 
-        // Pin the state this test promotes FROM, before changing anything.
+        // Browse back to yesterday, as the user would.
         //
-        // buildHomeViewModel seeds selectedDate to this clock's logical date under the default
-        // 4:00 day-start - 2026-08-27 - which is also the current logical day, so the field starts
-        // out EDITABLE. Only then does the browse-back above make the 26th the selection. That
-        // matters because a bare wait for isProtected == false after the day-start change would
-        // match that starting value and return immediately, having observed no promotion at all;
-        // the failure would then surface as an opaque timeout inside type(). Seeing the field go
-        // read-only first means the later wait can only be satisfied by a real transition.
+        // Written AFTER launch, deliberately. buildHomeViewModel has just written this clock's
+        // logical date (the 27th) to the durable store, and the ViewModel starts collecting it
+        // eagerly at construction - so a write issued between construction and the first emission
+        // is a race with no ordering guarantee, and losing it leaves the selection on the 27th.
+        // That inverts the whole test: with the selection on the 27th, day-start 4:00 makes today
+        // current (field editable, so the read-only wait below can never pass) and day-start 23:00
+        // moves the current day to the 26th (field read-only, so the promotion can never be
+        // observed). Both failure modes were reached before this was pinned down.
+        runBlocking { appStateRepository.setSelectedDate(yesterday) }
+        waitUntilSelectedDate(viewModel, yesterday)
+
+        // Pin the state this test promotes FROM, before changing anything. Seeing the field go
+        // read-only means the later wait for an editable field can only be satisfied by a real
+        // transition, rather than matching the state the screen started in.
         waitUntilFieldReadOnly(1L)
 
         // Mirror image of demotion: with day-start 23:00 the 26th IS the current logical day,
@@ -335,10 +341,7 @@ class HomeScreenBasicsTest : BaseHomeScreenTest() {
         // recomposition landed. That is the only hop left for it to cover.
         type(1L, "promoted note")
         runBlocking {
-            assertWholeDb(
-                mapOf((1L to LocalDate.parse("2026-08-26")) to "promoted note"),
-                "promoted day accepts edits",
-            )
+            assertWholeDb(mapOf((1L to yesterday) to "promoted note"), "promoted day accepts edits")
         }
 
         // Leave the durable selected-date store as we found it (this clock's logical date under

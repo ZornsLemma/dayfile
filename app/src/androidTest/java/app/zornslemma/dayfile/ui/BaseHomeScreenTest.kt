@@ -216,6 +216,14 @@ abstract class BaseHomeScreenTest : BaseAppTest() {
     // same uiState in the same recomposition, so a field that has become read-only implies the
     // icon is present - but the icon itself sits inside a merging parent and is not as dependable
     // a thing to poll.
+    // Waits until [vm] reports [date] as the selected date. A model-level gate, so a test that
+    // arranges a date can be certain the arrangement landed before reasoning about anything
+    // derived from it. Distinct from waiting on the rendered field: this says the ViewModel knows,
+    // which is the earlier and more diagnostic of the two hops.
+    protected fun waitUntilSelectedDate(vm: HomeViewModel, date: LocalDate) {
+        composeTestRule.waitUntil(timeoutMillis = 5_000) { vm.uiStateFlow.value?.date == date }
+    }
+
     protected fun waitUntilFieldEditable(catId: Long) {
         composeTestRule.waitUntil(timeoutMillis = 5_000) { isFieldEditable(catId) }
     }
