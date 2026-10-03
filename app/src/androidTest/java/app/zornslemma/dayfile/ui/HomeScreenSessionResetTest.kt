@@ -80,16 +80,14 @@ class HomeScreenSessionResetTest : BaseHomeScreenTest() {
     private fun launchHome() {
         seedCategory(id = 1, name = "Diet", ordering = 0)
         homeViewModel = buildHomeViewModel { now }
-        composeTestRule.setContent {
-            HomeScreen(
-                homeViewModel = homeViewModel,
-                onCategories = {},
-                onSettings = {},
-                onHistory = {},
-                homeSessionResetToken = homeSessionResetToken,
-            )
-        }
-        composeTestRule.waitForIdle()
+        // Delegates to the shared launcher rather than calling setContent itself. This used to
+        // duplicate it, and so silently missed the wait for the ViewModel's first state - leaving
+        // the screen blank (HomeScreen renders nothing at all while uiState is null) and every
+        // interaction on it failing to find a node. One launcher, so that cannot drift again.
+        //
+        // The token is passed as a provider so it is read inside setContent: the tests mutate it
+        // after launch, which is the point.
+        launchHomeScreen(homeViewModel, homeSessionResetToken = { homeSessionResetToken })
     }
 
     private fun openDatePicker() {

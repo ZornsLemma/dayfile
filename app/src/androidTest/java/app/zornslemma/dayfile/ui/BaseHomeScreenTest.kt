@@ -58,6 +58,11 @@ abstract class BaseHomeScreenTest : BaseAppTest() {
         onCategories: () -> Unit = {},
         onSettings: () -> Unit = {},
         onHistory: (LocalDate) -> Unit = {},
+        // A PROVIDER, not a value, and read inside setContent. HomeScreenSessionResetTest mutates
+        // its token after launch and relies on that mutation scheduling the recomposition that
+        // closes an open date picker; a plain Int parameter would capture a snapshot at launch
+        // time and the mutation would never reach the screen.
+        homeSessionResetToken: () -> Int = { 0 },
     ) {
         lastLaunchedHomeViewModel = homeVm
         composeTestRule.setContent {
@@ -66,6 +71,7 @@ abstract class BaseHomeScreenTest : BaseAppTest() {
                 onCategories = onCategories,
                 onSettings = onSettings,
                 onHistory = onHistory,
+                homeSessionResetToken = homeSessionResetToken(),
             )
         }
         awaitFirstUiState(homeVm)
