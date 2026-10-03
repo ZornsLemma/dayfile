@@ -46,20 +46,13 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v5
 
-      # No android-actions/setup-android here on purpose. GitHub's runner images
-      # ship the Android SDK with the command line tools and licences already in
-      # place, which is what ci.yml relies on too. The action was only ever
-      # reinstalling what the image already had, and asking sdkmanager for the
-      # old 'tools' package - which Google no longer serves - failed the whole
-      # step. One fewer third-party action to break on a tag run.
-      #
-      # This step is what accepts the licences now, so it is load-bearing rather
-      # than belt and braces: assembleRelease needs the platform it compiles
-      # against, and the emulator needs a system image. `yes |` rather than a
-      # single "y" because --licenses asks about several licences in turn and
-      # would otherwise stop at the first unanswered one.
-      - name: Accept SDK licences
-        run: yes | sdkmanager --licenses > /dev/null || true
+      # No android-actions/setup-android, and no licence-accepting step either. The
+      # runner images ship the Android SDK with the licences already accepted, and
+      # sdkmanager is not on PATH anyway - it lives under $ANDROID_HOME/cmdline-tools -
+      # so such a step only ever printed "command not found". Gradle downloads
+      # whatever else it needs. The action is absent because it reinstalled what the
+      # image already had and then asked for the old 'tools' package, which Google no
+      # longer serves, so sdkmanager exited 1 and the job failed there.
 
       # The check that earns this workflow its existence. Release enables R8 and
       # resource shrinking with no custom ProGuard rules, so a stripped class
@@ -97,6 +90,24 @@ jobs:
           profile: pixel_7_pro
           disable-animations: true
           emulator-boot-timeout: 600
+
+          # This REPLACES the action's whole default option string rather than being
+          # added to it, so the other flags have to be repeated here.
+          #
+          # The default is `-gpu swiftshader_indirect`, which Google deprecated in
+          # emulator 36.4.9. On the runner it produced a broken renderer - "Failed to
+          # find ColorBuffer" and "Failed to bind to texture: invalid color buffer" -
+          # and a run 2.5x slower than the same tests on a local machine. Compose
+          # recomputes the MERGED semantics tree during layout and draw, so with frames
+          # stalled the merged tree lags the unmerged one and assertions fail with
+          # "the unmerged tree contains 1 node that matches". That was six instrumented
+          # tests; the rest of the 112 passed, so it was the renderer and not the app.
+          #
+          # `swiftshader` is the supported successor and covers both GLES and Vulkan,
+          # the latter being what this image actually used.
+          emulator-options: >-
+            -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
+
           script: ./gradlew connectedDebugAndroidTest
 
       # Only if something actually failed, and only when the run failed rather
